@@ -7,14 +7,13 @@ load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")  # Funciona para Polygon también
+ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 THRESHOLD_USDT = float(os.getenv("THRESHOLD_USDT"))
 
-# Contrato USDT CORRECTO en Polygon Mainnet
-USDT_CONTRACT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+# Contrato USDT en Polygon Mainnet (ahora configurable)
+USDT_CONTRACT = os.getenv("USDT_CONTRACT", "0xc2132D05D31c914a87C6611C10748AEb04B58e8F")
 
-# ⚠️ V2 usa etherscan.io, no polygonscan.com
 POLYGONSCAN_URL = "https://api.etherscan.io/v2/api"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
@@ -39,7 +38,11 @@ def get_usdt_balance():
         res = response.json()
         
         if res.get("status") != "1":
-            print(f"❌ Error obteniendo balance: {res.get('message')}")
+            print(f"❌ Error obteniendo balance:")
+            print(f"   Message: {res.get('message')}")
+            print(f"   Result: {res.get('result')}")
+            print(f"   URL: {POLYGONSCAN_URL}")
+            print(f"   Params: {params}")
             return None
 
         raw = int(res["result"])
@@ -96,40 +99,52 @@ def main_loop():
     print(f"⚠️  Umbral: {THRESHOLD_USDT} USDT\n")
 
     last_summary = 0
+    last_balance_check = 0
+    processed_commands = set()  # Para evitar duplicados
 
     while True:
-        # Revisar si enviaron /balance
+        now = time()
+        
+        # Revisar comandos (cada 2 segundos)
         update = check_for_commands()
         if update:
             text, chat_id = update
+            command_id = f"{chat_id}_{text}_{last_update_id}"
 
-            if text and text.startswith("/balance"):
+            if text and text.startswith("/balance") and command_id not in processed_commands:
+                processed_commands.add(command_id)
                 balance = get_usdt_balance()
                 if balance is None:
                     send_message("⚠️ No pude obtener el balance", chat_id)
                 else:
                     send_message(f"💰 Balance actual: {balance:.2f} USDT", chat_id)
+                
+                # Limpiar set si crece mucho
+                if len(processed_commands) > 20:
+                    processed_commands.clear()
 
-        # Monitoreo automático
-        balance = get_usdt_balance()
-        now = time()
+        # Monitoreo automático (cada 60 segundos)
+        if now - last_balance_check >= 60:
+            balance = get_usdt_balance()
 
-        if balance is not None:
-            print(f"💰 Balance: {balance:.2f} USDT")
+            if balance is not None:
+                print(f"💰 Balance: {balance:.2f} USDT")
 
-            # Alerta si baja del umbral
-            if balance < THRESHOLD_USDT:
-                send_message(
-                    f"⚠️ ALERTA: El balance cayó a {balance:.2f} USDT "
-                    f"(umbral = {THRESHOLD_USDT} USDT)"
-                )
+                # Alerta si baja del umbral
+                if balance < THRESHOLD_USDT:
+                    send_message(
+                        f"⚠️ ALERTA: El balance cayó a {balance:.2f} USDT "
+                        f"(umbral = {THRESHOLD_USDT} USDT)"
+                    )
 
-            # Resumen cada 15 minutos
-            if now - last_summary >= 15 * 60:
-                send_message(f"⏱ Balance actual: {balance:.2f} USDT")
-                last_summary = now
+                # Resumen cada 15 minutos
+                if now - last_summary >= 15 * 60:
+                    send_message(f"⏱ Balance actual: {balance:.2f} USDT")
+                    last_summary = now
+            
+            last_balance_check = now
 
-        sleep(60)
+        sleep(2)
 
 
 if __name__ == "__main__":
