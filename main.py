@@ -11,10 +11,11 @@ ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")  # Funciona para Polygon tamb
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 THRESHOLD_USDT = float(os.getenv("THRESHOLD_USDT"))
 
-# ⚠️ Contrato USDT CORRECTO en Polygon Mainnet
+# Contrato USDT CORRECTO en Polygon Mainnet
 USDT_CONTRACT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
 
-POLYGONSCAN_URL = "https://api.polygonscan.com/api"
+# ⚠️ V2 usa etherscan.io, no polygonscan.com
+POLYGONSCAN_URL = "https://api.etherscan.io/v2/api"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
 # Tracking de offset para mensajes
@@ -24,6 +25,7 @@ last_update_id = 0
 def get_usdt_balance():
     """Devuelve USDT balance en Polygon."""
     params = {
+        "chainid": "137",  # Polygon Mainnet
         "module": "account",
         "action": "tokenbalance",
         "contractaddress": USDT_CONTRACT,
@@ -33,14 +35,16 @@ def get_usdt_balance():
     }
 
     try:
-        res = requests.get(POLYGONSCAN_URL, params=params, timeout=10).json()
+        response = requests.get(POLYGONSCAN_URL, params=params, timeout=10)
+        res = response.json()
         
         if res.get("status") != "1":
-            print("❌ Error obteniendo balance:", res)
+            print(f"❌ Error obteniendo balance: {res.get('message')}")
             return None
 
         raw = int(res["result"])
-        return raw / 1_000_000  # USDT tiene 6 decimales
+        balance = raw / 1_000_000  # USDT tiene 6 decimales
+        return balance
     except Exception as e:
         print(f"❌ Excepción al consultar balance: {e}")
         return None
