@@ -2,11 +2,14 @@ import os
 import requests
 from time import sleep, time
 from dotenv import load_dotenv
+from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID")  # ID del grupo
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 THRESHOLD_USDT = float(os.getenv("THRESHOLD_USDT"))
@@ -41,8 +44,6 @@ def get_usdt_balance():
             print(f"❌ Error obteniendo balance:")
             print(f"   Message: {res.get('message')}")
             print(f"   Result: {res.get('result')}")
-            print(f"   URL: {POLYGONSCAN_URL}")
-            print(f"   Params: {params}")
             return None
 
         raw = int(res["result"])
@@ -55,14 +56,22 @@ def get_usdt_balance():
 
 def send_message(text, chat_id=None):
     """Envía mensaje a Telegram."""
-    if chat_id is None:
-        chat_id = TELEGRAM_CHAT_ID
-
     url = f"{TELEGRAM_API_URL}/sendMessage"
-    try:
-        requests.post(url, json={"chat_id": chat_id, "text": text}, timeout=10)
-    except Exception as e:
-        print(f"❌ Error enviando mensaje: {e}")
+    
+    # Si no se especifica chat_id, enviar a ambos (personal y grupo)
+    if chat_id is None:
+        chat_ids = [TELEGRAM_CHAT_ID]
+        if TELEGRAM_GROUP_ID:
+            chat_ids.append(TELEGRAM_GROUP_ID)
+    else:
+        chat_ids = [chat_id]
+    
+    # Enviar a cada chat
+    for cid in chat_ids:
+        try:
+            requests.post(url, json={"chat_id": cid, "text": text}, timeout=10)
+        except Exception as e:
+            print(f"❌ Error enviando mensaje a {cid}: {e}")
 
 
 def check_for_commands():
@@ -90,6 +99,27 @@ def check_for_commands():
     chat_id = message.get("chat", {}).get("id")
 
     return text, chat_id
+
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Servidor HTTP simple para que Render detecte que el servicio está corriendo."""
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'Bot is running!')
+    
+    def log_message(self, format, *args):
+        # Silenciar logs del servidor HTTP
+        pass
+
+
+def start_health_server():
+    """Inicia servidor HTTP en el puerto que Render espera."""
+    port = int(os.getenv("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    print(f"🌐 Servidor HTTP corriendo en puerto {port}")
+    server.serve_forever()
 
 
 def main_loop():
@@ -148,4 +178,9 @@ def main_loop():
 
 
 if __name__ == "__main__":
+    # Iniciar servidor HTTP en un thread separado (para Render)
+    health_thread = Thread(target=start_health_server, daemon=True)
+    health_thread.start()
+    
+    # Iniciar el bot
     main_loop()
