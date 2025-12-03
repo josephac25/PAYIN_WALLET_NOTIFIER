@@ -63,13 +63,16 @@ def send_message(text, chat_id=None):
         chat_ids = [TELEGRAM_CHAT_ID]
         if TELEGRAM_GROUP_ID:
             chat_ids.append(TELEGRAM_GROUP_ID)
+        print(f"📤 Enviando mensaje automático a: {chat_ids}")  # Debug
     else:
         chat_ids = [chat_id]
+        print(f"📤 Respondiendo comando a: {chat_id}")  # Debug
     
     # Enviar a cada chat
     for cid in chat_ids:
         try:
             requests.post(url, json={"chat_id": cid, "text": text}, timeout=10)
+            print(f"✅ Mensaje enviado a {cid}")  # Debug
         except Exception as e:
             print(f"❌ Error enviando mensaje a {cid}: {e}")
 
@@ -137,7 +140,9 @@ def main_loop():
     print("🤖 Bot corriendo y monitoreando USDT en Polygon…")
     print(f"📍 Wallet: {WALLET_ADDRESS}")
     print(f"💎 Contrato USDT: {USDT_CONTRACT}")
-    print(f"⚠️  Umbral: {THRESHOLD_USDT} USDT\n")
+    print(f"⚠️  Umbral: {THRESHOLD_USDT} USDT")
+    print(f"💬 Chat personal: {TELEGRAM_CHAT_ID}")
+    print(f"👥 Grupo: {TELEGRAM_GROUP_ID if TELEGRAM_GROUP_ID else 'No configurado'}\n")
 
     last_summary = 0
     last_balance_check = 0
@@ -192,9 +197,6 @@ if __name__ == "__main__":
     # Iniciar servidor HTTP en un thread separado (para Render)
     health_thread = Thread(target=start_health_server, daemon=True)
     health_thread.start()
-    
-    # Iniciar el bot
-    main_loop()
     
     # Iniciar el bot
     main_loop()
