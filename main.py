@@ -10,6 +10,12 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID")  # ID del grupo
+
+# Debug crítico - Verificar que se cargó la variable
+print(f"🔍 DEBUG: TELEGRAM_GROUP_ID cargado = '{TELEGRAM_GROUP_ID}'")
+print(f"🔍 DEBUG: ¿Es None? {TELEGRAM_GROUP_ID is None}")
+print(f"🔍 DEBUG: ¿Es vacío? {TELEGRAM_GROUP_ID == ''}")
+
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 THRESHOLD_USDT = float(os.getenv("THRESHOLD_USDT"))
