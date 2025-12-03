@@ -109,6 +109,17 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b'Bot is running!')
     
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+    
+    def do_POST(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'Bot is running!')
+    
     def log_message(self, format, *args):
         # Silenciar logs del servidor HTTP
         pass
@@ -181,6 +192,9 @@ if __name__ == "__main__":
     # Iniciar servidor HTTP en un thread separado (para Render)
     health_thread = Thread(target=start_health_server, daemon=True)
     health_thread.start()
+    
+    # Iniciar el bot
+    main_loop()
     
     # Iniciar el bot
     main_loop()
