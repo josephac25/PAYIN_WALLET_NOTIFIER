@@ -190,7 +190,7 @@ def main_loop():
                     )
 
                 # Resumen cada 15 minutos
-                if now - last_summary >= 15 * 60:
+                if now - last_summary >= 60 * 60:
                     send_message(f"⏱ Balance actual: {balance:.2f} USDT")
                     last_summary = now
             
